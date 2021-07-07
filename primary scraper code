@@ -1,0 +1,53 @@
+# this function takes a user inputted video game title available on the PC-focused service "Steam" and searches it on SteamCharts, a website that logs player count statistics
+# it scrapes the available stats for the results, printing those of the top result first then a list of all the results on the page
+# the user can even just enter a portion of the title as the function performs the search for the user
+
+##Packages
+#Web scraping packages
+from bs4 import BeautifulSoup
+import requests
+#Pandas for data manipulation
+import pandas as pd
+
+
+def get_game_data():
+# gets user's desired game name via input (try "Need for Speed" to search for and compare all available Need for Speed titles on Steam)
+  game_name = input("Enter a game name: ")
+
+# fixes entered string by replacing spaces with plus signs if needed
+  if game_name.find(" ") >= 1:
+    game_search = game_name.replace(" ", "+")
+  else:
+    game_search = game_name
+  
+  url = "https://steamcharts.com/search/?q=" + game_search
+  response = requests.get(url)
+  if not response.status_code == 200:
+    print("request not successful")
+  else:
+    print(url)
+  results_page = BeautifulSoup(response.content, 'lxml')
+  all_games = results_page.find_all('tr')
+
+# removes first item from list which was just column labels    
+  all_games.pop(0)
+
+# creates empty list for scraped data and loops through adding scraped data to list
+  gd_list = []
+  for i in all_games:
+    name = i.find('td', class_='left').find('a', recursive=False).get_text()
+    current_players = i.find('td', class_='right num').get_text()
+    month_avg = i.find('td', class_='right num-f').get_text()
+    month_gain = i.find('td', class_='right num-p gainorloss').get_text()
+    month_gain_percent = i.find('td', class_='right gainorloss').get_text()
+
+    gd_list.append((name, current_players, month_avg, month_gain, month_gain_percent))
+  
+  print(gd_list[0], "\n")
+  return(gd_list)
+
+games = get_game_data()
+pd.DataFrame(games)
+
+# items in the list that have [0, 0, -, -] are likely downloadable content that is listed for purchase on Steam,
+# but only a part of the game and thus will not log player counts.
